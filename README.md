@@ -1,13 +1,16 @@
 # E2E BI Tutorial
 
-CSV to MinIO data pipeline using DLT (Data Load Tool).
+Complete data pipeline: CSV to MinIO to Iceberg to dbt to Trino, orchestrated with Dagster.
 
 ## Components
 
-- **MinIO**: S3-compatible object storage
-- **Apache Iceberg**: Table format for analytics
-- **PostgreSQL**: Iceberg catalog backend
-- **DLT**: Python data pipeline framework
+- MinIO: S3-compatible object storage
+- Apache Iceberg: Table format for analytics  
+- PostgreSQL: Iceberg catalog backend
+- DLT: Python data pipeline framework
+- dbt: Data transformation framework
+- Trino: SQL query engine
+- Dagster: Pipeline orchestration
 
 ## Prerequisites
 
@@ -23,7 +26,7 @@ git clone https://github.com/jianwei14/e2e_bi_tutorial.git
 cd e2e_bi_tutorial
 ```
 
-2. Create `.env` file:
+2. Create .env file:
 ```bash
 AWS_ACCESS_KEY_ID=admin
 AWS_SECRET_ACCESS_KEY=admin_secret
@@ -47,94 +50,76 @@ poetry install
 
 ## Usage
 
-### Option 1: Complete Pipeline (Recommended)
-Run the complete pipeline to create both MinIO files and Iceberg tables:
+### Dagster Orchestration (Recommended)
+
+Start Dagster UI:
+```bash
+DAGSTER_DBT_PARSE_PROJECT_ON_LOAD=1 poetry run dagster dev -h 0.0.0.0 -p 3000 --module-name dagster_pipeline.definitions
+```
+
+Access at: http://localhost:3000
+
+Run complete pipeline: Click "Materialize All" in Assets tab
+
+Command line:
+```bash
+poetry run dagster asset materialize --select "*"
+```
+
+### Alternative Methods
+
+Quick script:
 ```bash
 poetry run python run_complete_pipeline.py
 ```
 
-### Option 2: Step by Step
-1. Load CSV data to MinIO:
+Manual steps:
 ```bash
 poetry run python run_retail_pipeline.py
-```
-
-2. Create Iceberg tables for Trino:
-```bash
 poetry run python create_iceberg_tables.py
+cd e2e_bi_tutorial/dbt/e2e_bi_tutorial && poetry run dbt build
 ```
 
-## Querying with Trino
+## Querying Data
 
-After running the pipeline, you can query the data using Trino:
-
-1. Connect to Trino (assumes Trino is running):
+Connect to Trino:
 ```bash
 trino --server localhost:8080
 ```
 
-2. Query your Iceberg tables:
+Query raw data:
 ```sql
--- Switch to the Iceberg catalog and raw schema
 use iceberg.raw;
-
--- List all tables
 show tables;
-
--- Query the data
 select * from customers limit 10;
-select * from orders limit 10;
-select * from products limit 10;
-select * from stores limit 10;
-
--- Example analytical query
-select 
-    c.first_name, 
-    c.last_name, 
-    count(o.id) as order_count,
-    sum(o.total_amount) as total_spent
-from customers c
-join orders o on c.id = o.customer_id
-group by c.first_name, c.last_name
-order by total_spent desc
-limit 20;
 ```
 
-## Access
+Query transformed data:
+```sql
+use iceberg.project_marts;
+show tables;
+select * from marts_iceberg__general limit 10;
+```
 
-- **MinIO Console**: http://localhost:9001 (admin/admin_secret)
-- **MinIO API**: http://localhost:9000
-- **Iceberg REST**: http://localhost:8181
+## Access Points
 
-## Data Files
+- Dagster UI: http://localhost:3000
+- MinIO Console: http://localhost:9001 (admin/admin_secret)
+- Trino: http://localhost:8080
+- Iceberg REST: http://localhost:8181
 
-Place your CSV files in `e2e_bi_tutorial/data/`:
-- customers.csv
-- orders.csv  
-- products.csv
-- stores.csv
+## Pipeline Flow
 
-## Pipeline Features
-
-- **Idempotent**: Safe to run multiple times
-- **Two-stage process**: DLT loads data to MinIO, then creates Iceberg tables
-- **Trino-compatible**: Creates Iceberg tables queryable by Trino
-- **Chunked processing**: Handles large files efficiently
-- **Data validation**: Converts data types (dates, etc.)
-- **Error handling**: Robust error reporting
-- **Automatic decompression**: Handles gzip-compressed DLT output
-
-## Development
-
-The pipeline is configured with:
-- `write_disposition="replace"` - Replaces data on each run
-- Primary keys defined for each table
-- Automatic date column conversion
-- MinIO filesystem destination
+1. DLT Ingestion: CSV files to MinIO
+2. Iceberg Tables: JSONL to queryable tables
+3. dbt Transformations: Raw to staging to marts
+4. Data Quality: Automated validation
 
 ## Troubleshooting
 
-1. **Container issues**: Check `docker compose ps`
-2. **MinIO access**: Verify http://localhost:9001 is accessible
-3. **Missing files**: Ensure CSV files exist in `e2e_bi_tutorial/data/`
-4. **Python environment**: Verify Poetry environment with `poetry shell`
+1. Check containers: docker compose ps
+2. Check MinIO: http://localhost:9001
+3. Check Dagster: http://localhost:3000
+4. Verify CSV files exist in e2e_bi_tutorial/data/
+
+For detailed Dagster usage: see DAGSTER_GUIDE.md
