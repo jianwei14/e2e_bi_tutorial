@@ -1,0 +1,14 @@
+[tool.poetry]
+name = "e2e-bi-tutorial"
+version = "0.1.0"
+description = ""
+authors = ["Ong Jian Wei <ong_jian_wei@tech.gov.sg>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
