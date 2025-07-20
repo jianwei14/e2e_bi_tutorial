@@ -1,1 +1,12 @@
 .env*
+
+# DLT (Data Load Tool) files
+.dlt/secrets.toml
+.dlt/state/
+.dlt/pipeline_state/
+.dlt/credentials/
+.dlt/run_*
+
+# DLT generated data and logs  
+_dlt_pipeline/
+.dlt/data/

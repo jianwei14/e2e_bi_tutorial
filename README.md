@@ -1,6 +1,6 @@
 # End-to-End Business Intelligence Tutorial
 
-A comprehensive tutorial project demonstrating how to build a modern data lakehouse architecture using Apache Iceberg, MinIO, and Python.
+A comprehensive tutorial project demonstrating how to build a modern data lakehouse architecture using Apache Iceberg, MinIO, DLT (Data Load Tool), and Python.
 
 ## 🏗️ Architecture Overview
 
@@ -10,6 +10,7 @@ This project sets up a complete data lakehouse environment with the following co
 - **Apache Iceberg**: Modern table format for large analytic datasets
 - **Iceberg REST Catalog**: RESTful catalog service for managing Iceberg tables
 - **PostgreSQL**: Backend database for Iceberg catalog metadata
+- **DLT (Data Load Tool)**: Modern Python-first data pipeline framework
 - **Python Environment**: For data processing and analytics
 
 ## 📋 Prerequisites
@@ -98,32 +99,81 @@ poetry install
 poetry shell
 ```
 
+### Working with DLT Pipelines
+
+DLT makes it easy to build data pipelines with Python:
+
+```python
+import dlt
+
+# Simple CSV to Iceberg pipeline
+from e2e_bi_tutorial.csv_to_iceberg_pipeline import run_csv_to_iceberg_pipeline
+
+# Run the pipeline
+info = run_csv_to_iceberg_pipeline()
+print(f"Pipeline completed! Processed {len(info.loads_ids)} loads")
+```
+
+### Running the Complete Pipeline
+
+```bash
+# Run the CSV to Iceberg pipeline
+poetry run python run_pipeline.py
+
+# Or run the pipeline module directly
+poetry run python -m e2e_bi_tutorial.csv_to_iceberg_pipeline
+```
+
 ### Working with Iceberg Tables
 
-Here's a basic example of how to work with Iceberg tables in this setup:
+Here's how to query the data after it's loaded:
 
 ```python
 from pyiceberg.catalog import load_catalog
 
 # Load the Iceberg catalog
 catalog = load_catalog(
-    "default",
-    **{
-        "uri": "http://localhost:8181",
-        "s3.endpoint": "http://localhost:9000",
-        "s3.access-key-id": "minio_admin",
-        "s3.secret-access-key": "minio_password",
-    }
+    "rest",
+    uri="http://localhost:8181",
+    s3_endpoint="http://localhost:9000",
+    s3_access_key_id="minio_admin",
+    s3_secret_access_key="minio_password",
 )
 
 # List available tables
 print(catalog.list_tables())
 
-# Create a namespace
-catalog.create_namespace("tutorial")
+# Load a table and query it
+table = catalog.load_table("lakehouse_data.sample_customers")
+df = table.scan().to_pandas()
+print(df.head())
+```
 
-# Create a table
-# (Add your table creation code here)
+### Adding New Data Sources
+
+DLT makes it easy to add new data sources:
+
+```python
+import dlt
+
+@dlt.source
+def my_api_source():
+    @dlt.resource
+    def users():
+        # Fetch data from an API
+        response = requests.get("https://api.example.com/users")
+        yield response.json()
+    
+    return users
+
+# Run the pipeline
+pipeline = dlt.pipeline(
+    pipeline_name="api_to_iceberg",
+    destination="filesystem",
+    dataset_name="api_data"
+)
+
+info = pipeline.run(my_api_source(), table_format="iceberg")
 ```
 
 ## 🏗️ Architecture Details

@@ -1,0 +1,19 @@
+# DLT Configuration for Retail Data Pipeline
+# Optimized for customers, orders, products, and stores CSV ingestion
+
+[sources.retail_data_source]
+csv_files_path = "e2e_bi_tutorial/data/"
+
+[destination.filesystem]
+bucket_url = "s3://lakehouse"
+# Credentials will be loaded from secrets.toml
+
+# Performance settings for large files
+[load]
+workers = 2
+insert_max_batch_size = 10000
+file_format = "csv"
+
+# Normalization settings
+[normalize]
+workers = 2 
