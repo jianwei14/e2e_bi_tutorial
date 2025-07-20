@@ -1,5 +1,5 @@
 # DLT Configuration for Retail Data Pipeline
-# Optimized for customers, orders, products, and stores CSV ingestion
+# Loads CSV files to MinIO, then converts to Iceberg tables
 
 [sources.retail_data_source]
 csv_files_path = "e2e_bi_tutorial/data/"
@@ -12,7 +12,7 @@ bucket_url = "s3://lakehouse"
 [load]
 workers = 2
 insert_max_batch_size = 10000
-file_format = "csv"
+file_format = "parquet"
 
 # Normalization settings
 [normalize]

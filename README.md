@@ -47,15 +47,58 @@ poetry install
 
 ## Usage
 
-Run the data pipeline:
+### Option 1: Complete Pipeline (Recommended)
+Run the complete pipeline to create both MinIO files and Iceberg tables:
+```bash
+poetry run python run_complete_pipeline.py
+```
+
+### Option 2: Step by Step
+1. Load CSV data to MinIO:
 ```bash
 poetry run python run_retail_pipeline.py
 ```
 
-This will:
-- Load CSV files from `e2e_bi_tutorial/data/`
-- Process: customers.csv, orders.csv, products.csv, stores.csv
-- Store data in MinIO bucket `lakehouse/raw/`
+2. Create Iceberg tables for Trino:
+```bash
+poetry run python create_iceberg_tables.py
+```
+
+## Querying with Trino
+
+After running the pipeline, you can query the data using Trino:
+
+1. Connect to Trino (assumes Trino is running):
+```bash
+trino --server localhost:8080
+```
+
+2. Query your Iceberg tables:
+```sql
+-- Switch to the Iceberg catalog and raw schema
+use iceberg.raw;
+
+-- List all tables
+show tables;
+
+-- Query the data
+select * from customers limit 10;
+select * from orders limit 10;
+select * from products limit 10;
+select * from stores limit 10;
+
+-- Example analytical query
+select 
+    c.first_name, 
+    c.last_name, 
+    count(o.id) as order_count,
+    sum(o.total_amount) as total_spent
+from customers c
+join orders o on c.id = o.customer_id
+group by c.first_name, c.last_name
+order by total_spent desc
+limit 20;
+```
 
 ## Access
 
@@ -74,10 +117,12 @@ Place your CSV files in `e2e_bi_tutorial/data/`:
 ## Pipeline Features
 
 - **Idempotent**: Safe to run multiple times
-- **CSV format**: Outputs data as CSV files
+- **Two-stage process**: DLT loads data to MinIO, then creates Iceberg tables
+- **Trino-compatible**: Creates Iceberg tables queryable by Trino
 - **Chunked processing**: Handles large files efficiently
 - **Data validation**: Converts data types (dates, etc.)
 - **Error handling**: Robust error reporting
+- **Automatic decompression**: Handles gzip-compressed DLT output
 
 ## Development
 
